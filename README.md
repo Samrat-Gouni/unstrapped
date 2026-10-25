@@ -1,10 +1,10 @@
-# WHOOP Local
+# Unstrapped
 
-**Use a WHOOP 4.0 strap with no subscription.** Read its data directly over Bluetooth, compute HRV / recovery / strain / sleep on-device, and keep everything local. No cloud, no account, no membership.
+**A local-first companion for the WHOOP 4.0 — no subscription required.** Read your strap's data directly over Bluetooth, compute HRV / recovery / strain / sleep on-device, and keep everything local. No cloud, no account, no membership.
 
-![WHOOP Local console](docs/dashboard.jpg)
+![Unstrapped console](docs/dashboard.jpg)
 
-> It's your hardware on your wrist. Cancel the membership and the band keeps recording to its own flash — WHOOP's cloud just stops showing it to you. WHOOP Local talks to the strap directly and bypasses the cloud entirely.
+> It's your hardware on your wrist. Cancel the membership and the band keeps recording to its own flash — WHOOP's cloud just stops showing it to you. Unstrapped talks to the strap directly and bypasses the cloud entirely.
 
 Not affiliated with or endorsed by WHOOP. This is interoperability with a device you own, built on the open-source reverse-engineering community (credits below).
 

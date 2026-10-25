@@ -1,4 +1,4 @@
-// WHOOP Local Console — orchestration. Reuses the tested metrics engine from
+// Unstrapped Console — orchestration. Reuses the tested metrics engine from
 // ../src/whoop/metrics.js (same code the unit tests cover) and drives the UI,
 // charts, and local session store.
 

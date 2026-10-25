@@ -1,7 +1,7 @@
 // Local session persistence (IndexedDB) + CSV export. Everything stays in this
 // browser; nothing is sent anywhere.
 
-const DB_NAME = "whoop-local";
+const DB_NAME = "unstrapped";
 const STORE = "sessions";
 const VERSION = 1;
 
