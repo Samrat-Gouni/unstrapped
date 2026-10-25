@@ -1,0 +1,12 @@
+# Third-party reference repos (oracles we diffed against — not ours to redistribute)
+reference/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+*.log
+.vscode/
+.idea/

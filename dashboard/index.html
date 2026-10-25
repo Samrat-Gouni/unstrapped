@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WHOOP Local · Console</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%E2%9D%A4%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="styles.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="wordmark">WHOOP<span class="dim">·</span>LOCAL</span>
+      <span class="build">console</span>
+    </div>
+    <div class="controls">
+      <span class="battery" id="battery" hidden><span class="batt-icon" aria-hidden="true"><i id="batt-fill"></i></span><span id="batt-pct">—</span></span>
+      <span class="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="status">Idle</span></span>
+      <button class="btn ghost" id="sync" hidden>Sync history</button>
+      <button class="btn ghost" id="gatt" hidden>GATT map</button>
+      <button class="btn ghost" id="profile">Profile</button>
+      <button class="btn ghost" id="demo">Demo mode</button>
+      <button class="btn primary" id="connect">Connect strap</button>
+      <button class="btn danger" id="disconnect" hidden>Disconnect</button>
+    </div>
+  </header>
+
+  <main class="cluster">
+    <!-- Recovery -->
+    <section class="card recovery" aria-labelledby="rec-h">
+      <div class="card-head"><h2 id="rec-h">Recovery</h2><span class="tag" id="rec-tag">baseline needed</span></div>
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 200 200" role="img" aria-label="Recovery score">
+          <circle class="ring-track" cx="100" cy="100" r="86" />
+          <circle class="ring-fill" id="rec-arc" cx="100" cy="100" r="86" transform="rotate(-90 100 100)" />
+        </svg>
+        <div class="ring-center">
+          <span class="ring-value" id="rec-value">—</span>
+          <span class="ring-unit">%</span>
+        </div>
+      </div>
+      <p class="card-foot" id="rec-note">Recovery compares today's HRV to your personal baseline — it fills in after a few days of data.</p>
+    </section>
+
+    <!-- Live heart rate -->
+    <section class="card hr" aria-labelledby="hr-h">
+      <div class="card-head"><h2 id="hr-h">Heart rate</h2><span class="pulse" id="pulse" aria-hidden="true"></span></div>
+      <div class="hr-read"><span class="big" id="hr">--</span><span class="unit">bpm</span></div>
+      <canvas id="trace" class="trace" width="640" height="150" aria-hidden="true"></canvas>
+      <div class="hr-sub">
+        <span><em id="hr-min">--</em> min</span>
+        <span><em id="hr-avg">--</em> avg</span>
+        <span><em id="hr-max">--</em> max</span>
+      </div>
+    </section>
+
+    <!-- Strain -->
+    <section class="card strain" aria-labelledby="st-h">
+      <div class="card-head"><h2 id="st-h">Strain</h2><span class="tag">session · 0–21</span></div>
+      <div class="strain-read"><span class="big" id="strain">0.0</span></div>
+      <div class="meter" aria-hidden="true"><i id="strain-bar"></i></div>
+      <p class="card-foot">Cardiovascular load from time in heart-rate zones. Proxy — matched in shape to WHOOP, not its exact number.</p>
+    </section>
+
+    <!-- Stat strip -->
+    <section class="stats" aria-label="Vitals">
+      <div class="stat"><span class="s-val hrv" id="hrv">--</span><span class="s-lab">HRV · RMSSD <em>ms</em></span></div>
+      <div class="stat"><span class="s-val" id="rhr">--</span><span class="s-lab">Resting HR <em>bpm</em></span></div>
+      <div class="stat"><span class="s-val" id="rr">--</span><span class="s-lab">Last RR <em>ms</em></span></div>
+      <div class="stat"><span class="s-val cal" id="cal">--</span><span class="s-lab">Calories <em>kcal · est.</em></span></div>
+      <div class="stat"><span class="s-val" id="beats">0</span><span class="s-lab">Beats <em>this session</em></span></div>
+    </section>
+
+    <!-- Session -->
+    <section class="card session" aria-labelledby="se-h">
+      <div class="card-head"><h2 id="se-h">Session</h2><span class="rec-live" id="rec-live" hidden>● REC</span></div>
+      <dl class="kv">
+        <dt>Elapsed</dt><dd id="elapsed">00:00</dd>
+        <dt>RR samples</dt><dd id="rrn">0</dd>
+        <dt>HRV window</dt><dd id="win">0 RR</dd>
+        <dt>Source</dt><dd id="src">—</dd>
+      </dl>
+    </section>
+
+    <!-- History -->
+    <section class="card history" aria-labelledby="hi-h">
+      <div class="card-head"><h2 id="hi-h">History</h2><span class="tag" id="hist-count">0 sessions</span></div>
+      <ul class="hist-list" id="hist"></ul>
+      <p class="card-foot muted">Sessions are stored only in this browser (IndexedDB). Export any one to CSV.</p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>No cloud · no account · no subscription — every reading stays on this device.</span>
+  </footer>
+
+  <div class="modal" id="gatt-modal" hidden role="dialog" aria-modal="true" aria-labelledby="gatt-title">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="gatt-title">GATT map</h2>
+        <div class="modal-actions">
+          <button class="mini" id="gatt-copy">Copy JSON</button>
+          <button class="mini" id="gatt-download">Download</button>
+          <button class="mini" id="gatt-close">Close</button>
+        </div>
+      </div>
+      <p class="modal-sub" id="gatt-sub">Everything your strap advertises — services, characteristics, and properties.</p>
+      <div class="modal-body" id="gatt-body"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="sync-modal" hidden role="dialog" aria-modal="true" aria-labelledby="sync-title">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="sync-title">Sync history</h2>
+        <div class="modal-actions">
+          <span class="sync-count" id="sync-count">starting…</span>
+          <button class="mini" id="sync-close">Close</button>
+        </div>
+      </div>
+      <p class="modal-sub">Draining the records your strap saved to flash — even from when nothing was connected. Read-only; nothing is erased.</p>
+      <div class="modal-body"><div id="sync-log" class="synclog" aria-live="polite"></div></div>
+    </div>
+  </div>
+
+  <div class="modal" id="profile-modal" hidden role="dialog" aria-modal="true" aria-labelledby="profile-title">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="profile-title">Your profile</h2>
+        <div class="modal-actions"><button class="mini" id="profile-close">Close</button></div>
+      </div>
+      <p class="modal-sub">Calories use the Keytel HR equation + a Mifflin–St Jeor resting baseline — they need these to estimate your burn. Stored only in this browser; it's an estimate.</p>
+      <form class="profile-form modal-body" id="profile-form">
+        <label>Sex
+          <select id="p-sex"><option value="male">Male</option><option value="female">Female</option></select>
+        </label>
+        <label>Age <em>years</em>
+          <input id="p-age" type="number" min="10" max="100" step="1" inputmode="numeric" placeholder="30" />
+        </label>
+        <label>Weight <em>kg</em>
+          <input id="p-weight" type="number" min="30" max="250" step="0.5" inputmode="decimal" placeholder="75" />
+        </label>
+        <label>Height <em>cm</em>
+          <input id="p-height" type="number" min="120" max="230" step="1" inputmode="numeric" placeholder="178" />
+        </label>
+        <button type="submit" class="btn primary" id="p-save">Save profile</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

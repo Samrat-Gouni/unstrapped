@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WHOOP Local · Phase 1 Harness</title>
+  <style>
+    :root {
+      --bg: oklch(16% 0.02 260);
+      --surface: oklch(21% 0.025 260);
+      --surface-2: oklch(25% 0.03 260);
+      --line: oklch(32% 0.03 260);
+      --text: oklch(93% 0.01 260);
+      --muted: oklch(70% 0.02 260);
+      --accent: oklch(72% 0.16 150);      /* live green */
+      --accent-2: oklch(70% 0.15 250);    /* info blue */
+      --warn: oklch(78% 0.15 75);
+      --danger: oklch(66% 0.19 25);
+      --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: clamp(1rem, 3vw, 2.5rem); }
+
+    header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .75rem 1rem; margin-bottom: 1.5rem; }
+    header h1 { font-size: clamp(1.4rem, 1rem + 2vw, 2rem); margin: 0; letter-spacing: -0.02em; }
+    header .tag { font-family: var(--mono); font-size: .78rem; color: var(--muted); padding: .15rem .5rem; border: 1px solid var(--line); border-radius: 999px; }
+    header p { width: 100%; margin: .25rem 0 0; color: var(--muted); font-size: .92rem; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-bottom: 1.25rem; }
+    button {
+      font-family: var(--sans); font-size: .95rem; font-weight: 600;
+      color: var(--bg); background: var(--accent);
+      border: none; border-radius: 10px; padding: .7rem 1.15rem; cursor: pointer;
+      transition: transform .12s cubic-bezier(.16,1,.3,1), filter .15s ease;
+    }
+    button:hover { filter: brightness(1.08); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    button.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); }
+    button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+
+    .pill { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--mono); font-size: .82rem; color: var(--muted); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 0 currentColor; }
+    .dot.live { background: var(--accent); animation: pulse 1.6s ease-out infinite; color: var(--accent); }
+    .dot.connecting { background: var(--warn); color: var(--warn); animation: pulse 1s ease-out infinite; }
+    .dot.err { background: var(--danger); }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 7px transparent; opacity: .85; } 100% { box-shadow: 0 0 0 0 transparent; } }
+    @media (prefers-reduced-motion: reduce) { .dot { animation: none !important; } }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.15rem; }
+    .card h2 { margin: 0 0 .75rem; font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+    .vitals { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+    .stat { display: flex; flex-direction: column; gap: .1rem; }
+    .stat .value { font-family: var(--mono); font-size: clamp(2rem, 1rem + 4vw, 3.2rem); font-weight: 600; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .stat .value.hr { color: var(--accent); }
+    .stat .value.hrv { color: var(--accent-2); }
+    .stat .label { font-size: .8rem; color: var(--muted); }
+    .stat .unit { font-size: .9rem; color: var(--muted); font-family: var(--sans); font-weight: 400; margin-left: .3rem; }
+
+    dl.kv { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .35rem .9rem; font-size: .9rem; }
+    dl.kv dt { color: var(--muted); }
+    dl.kv dd { margin: 0; font-family: var(--mono); word-break: break-all; }
+
+    .gatt { grid-column: 1 / -1; }
+    .gatt table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .8rem; }
+    .gatt th, .gatt td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .gatt th { color: var(--muted); font-weight: 600; }
+    .gatt .props span { display: inline-block; padding: 0 .35rem; margin: 0 .2rem .2rem 0; border-radius: 5px; background: var(--surface-2); color: var(--muted); }
+
+    .logwrap { grid-column: 1 / -1; }
+    .logwrap .head { display: flex; align-items: center; justify-content: space-between; }
+    #log { margin-top: .5rem; height: 320px; overflow-y: auto; background: oklch(12% 0.02 260); border: 1px solid var(--line); border-radius: 10px; padding: .75rem; font-family: var(--mono); font-size: .78rem; line-height: 1.55; }
+    #log .row { display: grid; grid-template-columns: 92px 68px 1fr; gap: .6rem; padding: .05rem 0; }
+    #log .t { color: var(--muted); }
+    #log .lvl { text-transform: uppercase; font-size: .68rem; letter-spacing: .04em; }
+    #log .lvl.info { color: var(--accent-2); }
+    #log .lvl.ok { color: var(--accent); }
+    #log .lvl.warn { color: var(--warn); }
+    #log .lvl.err { color: var(--danger); }
+    #log .lvl.data { color: var(--muted); }
+    #log .msg { white-space: pre-wrap; word-break: break-word; }
+
+    .notice { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 8px; padding: .7rem .9rem; margin-bottom: 1.25rem; font-size: .88rem; color: var(--muted); }
+    .notice strong { color: var(--text); }
+    code { font-family: var(--mono); background: var(--surface-2); padding: .05rem .35rem; border-radius: 5px; font-size: .85em; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>WHOOP&nbsp;Local</h1>
+      <span class="tag">Phase 1 · connect + live vitals</span>
+      <p>Reads live heart rate, RR-intervals, battery and device info from a WHOOP 4.0 strap over the <em>standard</em> Bluetooth Heart Rate service — no subscription, no cloud, no pairing. All data stays in this tab.</p>
+    </header>
+
+    <div class="notice" id="support-notice" hidden>
+      <strong>Web Bluetooth isn't available in this browser.</strong>
+      Use desktop <strong>Chrome</strong> (or Edge). Safari and Firefox don't support Web Bluetooth.
+    </div>
+
+    <div class="controls">
+      <button id="connect">Connect strap</button>
+      <button id="disconnect" class="danger" disabled>Disconnect</button>
+      <span class="pill"><span class="dot" id="status-dot"></span><span id="status-text">Idle</span></span>
+    </div>
+
+    <div class="grid">
+      <div class="card vitals">
+        <div class="stat">
+          <span class="value hr" id="hr">--</span>
+          <span class="label">Heart rate<span class="unit">bpm</span></span>
+        </div>
+        <div class="stat">
+          <span class="value hrv" id="hrv">--</span>
+          <span class="label">Instant HRV · RMSSD<span class="unit">ms</span></span>
+        </div>
+        <div class="stat">
+          <span class="value" id="rr">--</span>
+          <span class="label">Last RR interval<span class="unit">ms</span></span>
+        </div>
+        <div class="stat">
+          <span class="value" id="battery">--</span>
+          <span class="label">Battery<span class="unit">%</span></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Device</h2>
+        <dl class="kv" id="device-info">
+          <dt>Name</dt><dd id="di-name">—</dd>
+          <dt>Model</dt><dd id="di-model">—</dd>
+          <dt>Firmware</dt><dd id="di-fw">—</dd>
+          <dt>Hardware</dt><dd id="di-hw">—</dd>
+          <dt>Serial</dt><dd id="di-serial">—</dd>
+          <dt>Maker</dt><dd id="di-maker">—</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2>Session</h2>
+        <dl class="kv">
+          <dt>Beats seen</dt><dd id="s-beats">0</dd>
+          <dt>RR samples</dt><dd id="s-rr">0</dd>
+          <dt>HRV window</dt><dd id="s-window">0 RR</dd>
+          <dt>Uptime</dt><dd id="s-uptime">0s</dd>
+        </dl>
+      </div>
+
+      <div class="card gatt">
+        <h2>GATT explorer <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">— everything the strap advertises</span></h2>
+        <table id="gatt-table">
+          <thead><tr><th style="width:38%">Service</th><th style="width:34%">Characteristic</th><th>Properties</th></tr></thead>
+          <tbody id="gatt-body"><tr><td colspan="3" class="muted">Connect to enumerate services…</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="card logwrap">
+        <div class="head">
+          <h2 style="margin:0">Raw log</h2>
+          <span>
+            <button class="secondary" id="copy-log" style="padding:.35rem .7rem;font-size:.8rem">Copy</button>
+            <button class="secondary" id="clear-log" style="padding:.35rem .7rem;font-size:.8rem">Clear</button>
+          </span>
+        </div>
+        <div id="log" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  "use strict";
+
+  // ---- Bluetooth SIG standard UUIDs (bonding-free) --------------------------
+  const HEART_RATE_SERVICE     = 0x180D;
+  const HEART_RATE_MEASUREMENT = 0x2A37;
+  const BATTERY_SERVICE        = 0x180F;
+  const BATTERY_LEVEL          = 0x2A19;
+  const DEVICE_INFO_SERVICE    = 0x180A;
+  const DI = { model: 0x2A24, fw: 0x2A26, hw: 0x2A27, serial: 0x2A23, maker: 0x2A29 };
+  // Proprietary WHOOP 4.0 service — enumerated for visibility, used from Phase 3 on.
+  // Community refs disagree by one slot (whoop-reader: 61080000 · OpenStrap: 61080001),
+  // so whitelist both; the GATT explorer confirms which the band actually exposes.
+  const WHOOP_SERVICES = [
+    "61080000-8d6d-82b8-614a-1c8cb0f8dcc6",
+    "61080001-8d6d-82b8-614a-1c8cb0f8dcc6",
+  ];
+
+  const RR_WINDOW = 60; // rolling RR buffer for instant RMSSD
+
+  // ---- DOM helpers ----------------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+  function el(tag, opts = {}, ...kids) {
+    const node = document.createElement(tag);
+    if (opts.class) node.className = opts.class;
+    if (opts.text != null) node.textContent = opts.text;
+    for (const k of kids) node.append(k);
+    return node;
+  }
+  const els = {
+    connect: $("connect"), disconnect: $("disconnect"),
+    dot: $("status-dot"), status: $("status-text"),
+    hr: $("hr"), hrv: $("hrv"), rr: $("rr"), battery: $("battery"),
+    beats: $("s-beats"), rrCount: $("s-rr"), window: $("s-window"), uptime: $("s-uptime"),
+    gattBody: $("gatt-body"), log: $("log"),
+  };
+
+  // ---- state ----------------------------------------------------------------
+  let device = null, server = null;
+  let rrBuffer = [];
+  let beatsSeen = 0, rrSamples = 0, sessionStart = null, uptimeTimer = null;
+
+  // ---- logging (DOM-safe: no innerHTML) -------------------------------------
+  function log(level, msg) {
+    const now = new Date();
+    const t = now.toTimeString().slice(0, 8) + "." + String(now.getMilliseconds()).padStart(3, "0");
+    const row = el("div", { class: "row" },
+      el("span", { class: "t", text: t }),
+      el("span", { class: "lvl " + level, text: level }),
+      el("span", { class: "msg", text: msg }),
+    );
+    els.log.append(row);
+    els.log.scrollTop = els.log.scrollHeight;
+  }
+
+  function setStatus(state, text) {
+    els.dot.className = "dot" + (state ? " " + state : "");
+    els.status.textContent = text;
+  }
+
+  // ---- Standard Heart Rate Measurement parser (matches WHOOP 4.0 / SIG spec) -
+  // flags bit0: HR format (0=uint8,1=uint16). bit3: energy expended present.
+  // bit4: RR-intervals present, each uint16 LE in 1/1024 s units.
+  function parseHeartRate(value) {
+    const flags = value.getUint8(0);
+    let offset = 1, bpm;
+    if ((flags & 0x01) === 0) { bpm = value.getUint8(offset); offset += 1; }
+    else { bpm = value.getUint16(offset, true); offset += 2; }
+    if (flags & 0x08) offset += 2; // skip energy expended
+    const rr = [];
+    if (flags & 0x10) {
+      while (offset + 1 < value.byteLength) {
+        const raw = value.getUint16(offset, true);
+        rr.push(raw * 1000 / 1024);
+        offset += 2;
+      }
+    }
+    return { bpm, rr };
+  }
+
+  function rmssd(intervals) {
+    if (intervals.length < 2) return null;
+    let sum = 0;
+    for (let i = 1; i < intervals.length; i++) {
+      const d = intervals[i] - intervals[i - 1];
+      sum += d * d;
+    }
+    return Math.sqrt(sum / (intervals.length - 1));
+  }
+
+  function onHeartRate(event) {
+    const { bpm, rr } = parseHeartRate(event.target.value);
+    beatsSeen++;
+    els.hr.textContent = bpm;
+    els.beats.textContent = beatsSeen;
+
+    if (rr.length) {
+      els.rr.textContent = Math.round(rr[rr.length - 1]);
+      for (const iv of rr) { rrBuffer.push(iv); rrSamples++; }
+      if (rrBuffer.length > RR_WINDOW) rrBuffer = rrBuffer.slice(-RR_WINDOW);
+      const v = rmssd(rrBuffer);
+      els.hrv.textContent = v == null ? "--" : Math.round(v);
+      els.rrCount.textContent = rrSamples;
+      els.window.textContent = rrBuffer.length + " RR";
+      log("data", `HR ${bpm} bpm · RR [${rr.map(x => Math.round(x)).join(", ")}] ms`);
+    } else {
+      log("data", `HR ${bpm} bpm · (no RR this beat)`);
+    }
+  }
+
+  // ---- connect flow ---------------------------------------------------------
+  async function readString(service, uuid) {
+    try {
+      const c = await service.getCharacteristic(uuid);
+      const v = await c.readValue();
+      return new TextDecoder().decode(v).replace(/\0+$/, "").trim();
+    } catch { return null; }
+  }
+
+  function shortUuid(u) {
+    // collapse 128-bit SIG UUIDs (0000XXXX-0000-1000-8000-00805f9b34fb) to 0xXXXX
+    const m = String(u).match(/^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$/i);
+    return m ? "0x" + m[1].toUpperCase() : u;
+  }
+
+  function addGattRow(svc, char, props) {
+    const propsCell = el("td", { class: "props" });
+    for (const p of props) propsCell.append(el("span", { text: p }));
+    els.gattBody.append(el("tr", {},
+      el("td", { text: shortUuid(svc) }),
+      el("td", { text: shortUuid(char) }),
+      propsCell,
+    ));
+  }
+
+  async function enumerateGatt() {
+    els.gattBody.replaceChildren();
+    let services = [];
+    try { services = await server.getPrimaryServices(); }
+    catch (e) { log("warn", "getPrimaryServices failed: " + e.message); return; }
+    for (const svc of services) {
+      let chars = [];
+      try { chars = await svc.getCharacteristics(); } catch { /* some services block enumeration */ }
+      if (!chars.length) { addGattRow(svc.uuid, "—", []); continue; }
+      for (const c of chars) {
+        const props = Object.entries(c.properties).filter(([, v]) => v).map(([k]) => k);
+        addGattRow(svc.uuid, c.uuid, props);
+      }
+    }
+  }
+
+  async function connect() {
+    if (!navigator.bluetooth) { $("support-notice").hidden = false; return; }
+    try {
+      setStatus("connecting", "Requesting device…");
+      log("info", "Opening device chooser — pick your strap (unpair the official WHOOP app first).");
+      device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [HEART_RATE_SERVICE, BATTERY_SERVICE, DEVICE_INFO_SERVICE, ...WHOOP_SERVICES],
+      });
+      log("ok", `Selected: ${device.name || "(unnamed)"} [${device.id}]`);
+      $("di-name").textContent = device.name || "(unnamed)";
+      device.addEventListener("gattserverdisconnected", onDisconnected);
+
+      setStatus("connecting", "Connecting GATT…");
+      server = await device.gatt.connect();
+      log("ok", "GATT connected.");
+
+      await enumerateGatt();
+      await loadDeviceInfo();
+      await loadBattery();
+      await startHeartRate();
+
+      setStatus("live", "Live · streaming");
+      els.connect.disabled = true;
+      els.disconnect.disabled = false;
+      sessionStart = Date.now();
+      uptimeTimer = setInterval(() => {
+        if (sessionStart) els.uptime.textContent = Math.round((Date.now() - sessionStart) / 1000) + "s";
+      }, 1000);
+    } catch (e) {
+      if (e.name === "NotFoundError") { setStatus("", "Idle"); log("warn", "Chooser cancelled."); return; }
+      setStatus("err", "Error");
+      log("err", `${e.name}: ${e.message}`);
+    }
+  }
+
+  async function loadDeviceInfo() {
+    try {
+      const s = await server.getPrimaryService(DEVICE_INFO_SERVICE);
+      const set = async (id, uuid) => { const v = await readString(s, uuid); if (v) $(id).textContent = v; };
+      await set("di-model", DI.model);
+      await set("di-fw", DI.fw);
+      await set("di-hw", DI.hw);
+      await set("di-serial", DI.serial);
+      await set("di-maker", DI.maker);
+      log("ok", "Device Info read.");
+    } catch (e) { log("warn", "Device Info service unavailable: " + e.message); }
+  }
+
+  async function loadBattery() {
+    try {
+      const s = await server.getPrimaryService(BATTERY_SERVICE);
+      const c = await s.getCharacteristic(BATTERY_LEVEL);
+      const v = await c.readValue();
+      els.battery.textContent = v.getUint8(0);
+      log("ok", `Battery ${v.getUint8(0)}%.`);
+      if (c.properties.notify) {
+        await c.startNotifications();
+        c.addEventListener("characteristicvaluechanged", (e) => {
+          els.battery.textContent = e.target.value.getUint8(0);
+        });
+      }
+    } catch (e) { log("warn", "Battery service unavailable: " + e.message); }
+  }
+
+  async function startHeartRate() {
+    try {
+      const s = await server.getPrimaryService(HEART_RATE_SERVICE);
+      const c = await s.getCharacteristic(HEART_RATE_MEASUREMENT);
+      await c.startNotifications();
+      c.addEventListener("characteristicvaluechanged", onHeartRate);
+      log("ok", "Subscribed to Heart Rate Measurement (0x2A37). Waiting for beats…");
+    } catch (e) {
+      log("err", "Heart Rate service unavailable: " + e.message + " — is the strap on your wrist and awake?");
+    }
+  }
+
+  function onDisconnected() {
+    setStatus("err", "Disconnected");
+    log("warn", "Strap disconnected.");
+    els.connect.disabled = false;
+    els.disconnect.disabled = true;
+    clearInterval(uptimeTimer);
+    sessionStart = null;
+  }
+
+  function disconnect() {
+    if (device && device.gatt.connected) device.gatt.disconnect();
+    else onDisconnected();
+  }
+
+  // ---- wire up --------------------------------------------------------------
+  els.connect.addEventListener("click", connect);
+  els.disconnect.addEventListener("click", disconnect);
+  $("clear-log").addEventListener("click", () => els.log.replaceChildren());
+  $("copy-log").addEventListener("click", () => {
+    navigator.clipboard.writeText(els.log.innerText).then(() => log("info", "Log copied."));
+  });
+  if (!navigator.bluetooth) $("support-notice").hidden = false;
+  log("info", "Ready. Click “Connect strap”. Serve over http://localhost or https:// — file:// won't grant Bluetooth.");
+  </script>
+</body>
+</html>

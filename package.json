@@ -1,0 +1,10 @@
+{
+  "name": "whoop-local",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Use a WHOOP 4.0 strap without a subscription — local BLE reader, protocol codec, and metrics engine.",
+  "scripts": {
+    "test": "node --test"
+  }
+}
